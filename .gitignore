@@ -3,6 +3,16 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+preprocess.sh
+
+output/*
+dataset/sample_input_IP.csv
+dataset/sample_input_EX.csv
+dataset/sample_input_model_EX.csv
+dataset/sample_input_model_IP.csv
+
+.idea/
+
 # C extensions
 *.so
 

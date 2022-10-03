@@ -1,4 +1,4 @@
-declare -a array=("EX" "IP" "ER")
+declare -a array=("EX")
 arrLen=${#array[@]}
 # shellcheck disable=SC2004
 for (( i=1; i<${arrLen} + 1; i++ ));
@@ -20,8 +20,6 @@ do
       --batch_size=32 \
       --lambda_EI=1.0 \
       --lambda_RE=0.5 \
-      --do_validation=True \
-      --do_test=True \
       --save_model \
       --save_model_path="output/sample_${array[$i]}.pth"
   fi

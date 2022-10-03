@@ -2,7 +2,6 @@ import torch
 import codecs
 import numpy as np
 
-
 import pandas as pd
 import re
 import csv
@@ -24,16 +23,15 @@ from transformers import AdamW, RobertaConfig
 import datetime
 
 
-
 class EmpathyClassifier():
 
-	def __init__(self, 
-			device,
-			ER_model_path = 'output/sample.pth', 
-			IP_model_path = 'output/sample.pth',
-			EX_model_path = 'output/sample.pth',
-			batch_size=1):
-		
+	def __init__(self,
+				 device,
+				 ER_model_path='output/sample_ER.pth',
+				 IP_model_path='output/sample_IP.pth',
+				 EX_model_path='output/sample_EX.pth',
+				 batch_size=1):
+
 		self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base', do_lower_case=True)
 		self.batch_size = batch_size
 		self.device = device
@@ -55,43 +53,40 @@ class EmpathyClassifier():
 		self.model_IP.to(self.device)
 		self.model_EX.to(self.device)
 
-
 	def predict_empathy(self, seeker_posts, response_posts):
-		
+
 		input_ids_SP = []
 		attention_masks_SP = []
-		
-		for sent in seeker_posts:
 
+		for sent in seeker_posts:
 			encoded_dict = self.tokenizer.encode_plus(
-								sent,                      # Sentence to encode.
-								add_special_tokens = True, # Add '[CLS]' and '[SEP]'
-								max_length = 64,           # Pad & truncate all sentences.
-								pad_to_max_length = True,
-								return_attention_mask = True,   # Construct attn. masks.
-								return_tensors = 'pt',     # Return pytorch tensors.
-						)
-			
+				sent,  # Sentence to encode.
+				add_special_tokens=True,  # Add '[CLS]' and '[SEP]'
+				max_length=64,  # Pad & truncate all sentences.
+				pad_to_max_length=True,
+				return_attention_mask=True,  # Construct attn. masks.
+				return_tensors='pt',  # Return pytorch tensors.
+			)
+
 			input_ids_SP.append(encoded_dict['input_ids'])
 			attention_masks_SP.append(encoded_dict['attention_mask'])
-
 
 		input_ids_RP = []
 		attention_masks_RP = []
 
 		for sent in response_posts:
 			encoded_dict = self.tokenizer.encode_plus(
-								sent,                      # Sentence to encode.
-								add_special_tokens = True, # Add '[CLS]' and '[SEP]'
-								max_length = 64,           # Pad & truncate all sentences.
-								pad_to_max_length = True,
-								return_attention_mask = True,   # Construct attn. masks.
-								return_tensors = 'pt',     # Return pytorch tensors.
-						)
-			
+				sent,  # Sentence to encode.
+				add_special_tokens=True,  # Add '[CLS]' and '[SEP]'
+				max_length=64,  # Pad & truncate all sentences.
+				pad_to_max_length=True,
+				return_attention_mask=True,  # Construct attn. masks.
+				return_tensors='pt',  # Return pytorch tensors.
+			)
+
 			input_ids_RP.append(encoded_dict['input_ids'])
 			attention_masks_RP.append(encoded_dict['attention_mask'])
-		
+
 		input_ids_SP = torch.cat(input_ids_SP, dim=0)
 		attention_masks_SP = torch.cat(attention_masks_SP, dim=0)
 
@@ -101,9 +96,9 @@ class EmpathyClassifier():
 		dataset = TensorDataset(input_ids_SP, attention_masks_SP, input_ids_RP, attention_masks_RP)
 
 		dataloader = DataLoader(
-			dataset, # The test samples.
-			sampler = SequentialSampler(dataset), # Pull out batches sequentially.
-			batch_size = self.batch_size # Evaluate with this batch size.
+			dataset,  # The test samples.
+			sampler=SequentialSampler(dataset),  # Pull out batches sequentially.
+			batch_size=self.batch_size  # Evaluate with this batch size.
 		)
 
 		self.model_ER.eval()
@@ -117,28 +112,27 @@ class EmpathyClassifier():
 			b_input_mask_RP = batch[3].to(self.device)
 
 			with torch.no_grad():
-				(logits_empathy_ER, logits_rationale_ER,) = self.model_ER(input_ids_SP = b_input_ids_SP,
-														input_ids_RP = b_input_ids_RP, 
-														token_type_ids_SP=None,
-														token_type_ids_RP=None, 
-														attention_mask_SP=b_input_mask_SP,
-														attention_mask_RP=b_input_mask_RP)
-				
-				(logits_empathy_IP, logits_rationale_IP,) = self.model_IP(input_ids_SP = b_input_ids_SP,
-														input_ids_RP = b_input_ids_RP, 
-														token_type_ids_SP=None,
-														token_type_ids_RP=None, 
-														attention_mask_SP=b_input_mask_SP,
-														attention_mask_RP=b_input_mask_RP)
+				(logits_empathy_ER, logits_rationale_ER,) = self.model_ER(input_ids_SP=b_input_ids_SP,
+																		  input_ids_RP=b_input_ids_RP,
+																		  token_type_ids_SP=None,
+																		  token_type_ids_RP=None,
+																		  attention_mask_SP=b_input_mask_SP,
+																		  attention_mask_RP=b_input_mask_RP)
 
-				(logits_empathy_EX, logits_rationale_EX,) = self.model_EX(input_ids_SP = b_input_ids_SP,
-														input_ids_RP = b_input_ids_RP, 
-														token_type_ids_SP=None,
-														token_type_ids_RP=None, 
-														attention_mask_SP=b_input_mask_SP,
-														attention_mask_RP=b_input_mask_RP)
+				(logits_empathy_IP, logits_rationale_IP,) = self.model_IP(input_ids_SP=b_input_ids_SP,
+																		  input_ids_RP=b_input_ids_RP,
+																		  token_type_ids_SP=None,
+																		  token_type_ids_RP=None,
+																		  attention_mask_SP=b_input_mask_SP,
+																		  attention_mask_RP=b_input_mask_RP)
 
-				
+				(logits_empathy_EX, logits_rationale_EX,) = self.model_EX(input_ids_SP=b_input_ids_SP,
+																		  input_ids_RP=b_input_ids_RP,
+																		  token_type_ids_SP=None,
+																		  token_type_ids_RP=None,
+																		  attention_mask_SP=b_input_mask_SP,
+																		  attention_mask_RP=b_input_mask_RP)
+
 			logits_empathy_ER = logits_empathy_ER.detach().cpu().numpy().tolist()
 			predictions_ER = np.argmax(logits_empathy_ER, axis=1).flatten()
 
@@ -147,7 +141,6 @@ class EmpathyClassifier():
 
 			logits_empathy_EX = logits_empathy_EX.detach().cpu().numpy().tolist()
 			predictions_EX = np.argmax(logits_empathy_EX, axis=1).flatten()
-
 
 			logits_rationale_ER = logits_rationale_ER.detach().cpu().numpy()
 			predictions_rationale_ER = np.argmax(logits_rationale_ER, axis=2)
@@ -159,8 +152,8 @@ class EmpathyClassifier():
 			predictions_rationale_EX = np.argmax(logits_rationale_EX, axis=2)
 
 		return (logits_empathy_ER, predictions_ER, \
-		 	logits_empathy_IP, predictions_IP, \
-			logits_empathy_EX, predictions_EX, \
-			logits_rationale_ER, predictions_rationale_ER, \
-			logits_rationale_IP, predictions_rationale_IP, \
-			logits_rationale_EX,predictions_rationale_EX)
+				logits_empathy_IP, predictions_IP, \
+				logits_empathy_EX, predictions_EX, \
+				logits_rationale_ER, predictions_rationale_ER, \
+				logits_rationale_IP, predictions_rationale_IP, \
+				logits_rationale_EX, predictions_rationale_EX)

@@ -10,6 +10,9 @@ dataset/sample_input_IP.csv
 dataset/sample_input_EX.csv
 dataset/sample_input_model_EX.csv
 dataset/sample_input_model_IP.csv
+dataset/reddit_model_EX.csv
+dataset/reddit_model_IP.csv
+dataset/reddit_model_ER.csv
 
 .idea/
 

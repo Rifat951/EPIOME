@@ -55,8 +55,9 @@ for i in tqdm(range(len(seeker_posts))):
 
     csv_writer.writerow(
         [ids[i], seeker_posts[i], response_posts[i], predictions_ER[0], predictions_IP[0], predictions_EX[0],
-         predictions_rationale_ER[0].tolist(), predictions_rationale_IP[0].tolist(),
-         predictions_rationale_EX[0].tolist()])
+         predictions_rationale_ER[0].tolist(
+        ), predictions_rationale_IP[0].tolist(),
+            predictions_rationale_EX[0].tolist()])
 
 output_file.close()
 print("Done")

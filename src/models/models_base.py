@@ -1,28 +1,26 @@
-from .disitllbert import DistillBertForTokenClassification, DisitllBertModel
+from .roberta import RobertaForTokenClassification, RobertaModel
 import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss, MSELoss
 import math
 import torch.nn.functional as F
 
-from .model_db import DistillBertEmbeddings, DistillBertLayerNorm, DistillBertModel, DistillBertPreTrainedModel, gelu
-from .configuration_db import DistilBertConfig
+from .modeling_bert import BertEmbeddings, BertLayerNorm, BertModel, BertPreTrainedModel, gelu
+from .configuration_roberta import RobertaConfig
 from .file_utils import add_start_docstrings, add_start_docstrings_to_callable
 
-#from transformers import GPT2Model
+from transformers import GPT2Model
 from transformers import AutoModelWithLMHead, AutoTokenizer
 
 
-DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "distilbert-base-uncased",
-    "distilbert-base-uncased-distilled-squad",
-    "distilbert-base-cased",
-    "distilbert-base-cased-distilled-squad",
-    "distilbert-base-german-cased",
-    "distilbert-base-multilingual-cased",
-    "distilbert-base-uncased-finetuned-sst-2-english",
-    # See all DistilBERT models at https://huggingface.co/models?filter=distilbert
-]
+ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP = {
+	"roberta-base": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-base-pytorch_model.bin",
+	"roberta-large": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-pytorch_model.bin",
+	"roberta-large-mnli": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-mnli-pytorch_model.bin",
+	"distilroberta-base": "https://s3.amazonaws.com/models.huggingface.co/bert/distilroberta-base-pytorch_model.bin",
+	"roberta-base-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-base-openai-detector-pytorch_model.bin",
+	"roberta-large-openai-detector": "https://s3.amazonaws.com/models.huggingface.co/bert/roberta-large-openai-detector-pytorch_model.bin",
+}
 
 
 class Norm(nn.Module):
@@ -93,10 +91,10 @@ class MultiHeadAttention(nn.Module):
 		return output
 
 
-class SeekerEncoder(DistillBertPreTrainedModel):
-	config_class = DisitllBertModel
-	pretrained_model_archive_map = DISTILLBERT_PRETRAINED_MODEL_ARCHIVE_MAP
-	base_model_prefix = "distillbert"
+class SeekerEncoder(BertPreTrainedModel):
+	config_class = RobertaConfig
+	pretrained_model_archive_map = ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP
+	base_model_prefix = "roberta"
 
 	def __init__(self, config):
 		super().__init__(config)
@@ -111,21 +109,21 @@ class SeekerEncoder(DistillBertPreTrainedModel):
 		self.roberta.embeddings.word_embeddings = value
 	
 
-class ResponderEncoder(DistillBertPretrainedModel):
-	config_class = DisitllBertModel
-	pretrained_model_archive_map = DISTILLBERT_PRETRAINED_MODEL_ARCHIVE_MAP
-	base_model_prefix = "distillbert"
+class ResponderEncoder(BertPreTrainedModel):
+	config_class = RobertaConfig
+	pretrained_model_archive_map = ROBERTA_PRETRAINED_MODEL_ARCHIVE_MAP
+	base_model_prefix = "roberta"
 
 	def __init__(self, config):
 		super().__init__(config)
-		self.disitllbert = DistillBertModel(config)
+		self.roberta = RobertaModel(config)
 		self.init_weights()
 	
 	def get_input_embeddings(self):
-		return self.distilbert.embeddings.word_embeddings
+		return self.roberta.embeddings.word_embeddings
 
 	def set_input_embeddings(self, value):
-		self.disitllbert.embeddings.word_embeddings = value
+		self.roberta.embeddings.word_embeddings = value
 
 class BiEncoderAttentionWithRationaleClassification(nn.Module):
 
@@ -138,17 +136,17 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 		self.norm = Norm(hidden_size)
 		self.rationale_num_labels = rationale_num_labels
 		self.empathy_num_labels = empathy_num_labels
-		self.empathy_classifier = BartClassificationHead(hidden_size = 768)
+		self.empathy_classifier = RobertaClassificationHead(hidden_size = 768)
 
 		self.apply(self._init_weights)
 
 		self.seeker_encoder = SeekerEncoder.from_pretrained(
-								"distilbert-base-uncased", # Use the 12-layer BERT model, with an uncased vocab.
+								"roberta-base", # Use the 12-layer BERT model, with an uncased vocab.
 								output_attentions = False, # Whether the model returns attentions weights.
 								output_hidden_states = False)
 
 		self.responder_encoder = ResponderEncoder.from_pretrained(
-								"distilbert-base-uncased", # Use the 12-layer BERT model, with an uncased vocab.
+								"roberta-base", # Use the 12-layer BERT model, with an uncased vocab.
 								output_attentions = False, # Whether the model returns attentions weights.
 								output_hidden_states = False)
 
@@ -245,7 +243,7 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 
 
 
-class DistillBertClassificationHead(nn.Module):
+class RobertaClassificationHead(nn.Module):
 	"""Head for sentence-level classification tasks."""
 
 	def __init__(self, hidden_dropout_prob=0.1, hidden_size=768, empathy_num_labels=3):

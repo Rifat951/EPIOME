@@ -430,5 +430,3 @@ class PretrainedConfig(object):
 		"""
 		for key, value in config_dict.items():
 			setattr(self, key, value)
-
-

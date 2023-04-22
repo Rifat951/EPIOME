@@ -1,28 +1,38 @@
-from .disitllbert import DistillBertForTokenClassification, DisitllBertModel
+#from .roberta import RobertaForTokenClassification, RobertaModel
+import sys
+sys.path.append("..")
+from .modeling_bert import BertForTokenClassification, BertModel
 import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss, MSELoss
 import math
 import torch.nn.functional as F
 
-from .model_db import DistillBertEmbeddings, DistillBertLayerNorm, DistillBertModel, DistillBertPreTrainedModel, gelu
-from .configuration_db import DistilBertConfig
+from .modeling_bert import BertEmbeddings, BertLayerNorm, BertModel, BertPreTrainedModel, gelu
+#from .configuration_roberta import RobertaConfig
+from .configuration_bert import BertConfig
 from .file_utils import add_start_docstrings, add_start_docstrings_to_callable
 
 #from transformers import GPT2Model
+
 from transformers import AutoModelWithLMHead, AutoTokenizer
 
 
-DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "distilbert-base-uncased",
-    "distilbert-base-uncased-distilled-squad",
-    "distilbert-base-cased",
-    "distilbert-base-cased-distilled-squad",
-    "distilbert-base-german-cased",
-    "distilbert-base-multilingual-cased",
-    "distilbert-base-uncased-finetuned-sst-2-english",
-    # See all DistilBERT models at https://huggingface.co/models?filter=distilbert
-]
+BERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
+    'bert-base-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-pytorch_model.bin",
+    'bert-large-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-pytorch_model.bin",
+    'bert-base-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-pytorch_model.bin",
+    'bert-large-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-pytorch_model.bin",
+    'bert-base-multilingual-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-pytorch_model.bin",
+    'bert-base-multilingual-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-pytorch_model.bin",
+    'bert-base-chinese': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-pytorch_model.bin",
+    'bert-base-german-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-german-cased-pytorch_model.bin",
+    'bert-large-uncased-whole-word-masking': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-pytorch_model.bin",
+    'bert-large-cased-whole-word-masking': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-pytorch_model.bin",
+    'bert-large-uncased-whole-word-masking-finetuned-squad': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-finetuned-squad-pytorch_model.bin",
+    'bert-large-cased-whole-word-masking-finetuned-squad': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-finetuned-squad-pytorch_model.bin",
+    'bert-base-cased-finetuned-mrpc': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-finetuned-mrpc-pytorch_model.bin",
+}
 
 
 class Norm(nn.Module):
@@ -93,39 +103,39 @@ class MultiHeadAttention(nn.Module):
 		return output
 
 
-class SeekerEncoder(DistillBertPreTrainedModel):
-	config_class = DisitllBertModel
-	pretrained_model_archive_map = DISTILLBERT_PRETRAINED_MODEL_ARCHIVE_MAP
-	base_model_prefix = "distillbert"
+class SeekerEncoder(BertPreTrainedModel):
+	config_class = BertConfig
+	pretrained_model_archive_map = BERT_PRETRAINED_MODEL_ARCHIVE_MAP
+	base_model_prefix = "bert"
 
 	def __init__(self, config):
 		super().__init__(config)
 		self.num_labels = config.num_labels
-		self.roberta = RobertaModel(config)
+		self.bert = BertModel(config)
 		self.init_weights()
 	
 	def get_input_embeddings(self):
-		return self.roberta.embeddings.word_embeddings
+		return self.bert.embeddings.word_embeddings
 
 	def set_input_embeddings(self, value):
-		self.roberta.embeddings.word_embeddings = value
+		self.bert.embeddings.word_embeddings = value
 	
 
-class ResponderEncoder(DistillBertPretrainedModel):
-	config_class = DisitllBertModel
-	pretrained_model_archive_map = DISTILLBERT_PRETRAINED_MODEL_ARCHIVE_MAP
-	base_model_prefix = "distillbert"
+class ResponderEncoder(BertPreTrainedModel):
+	config_class = BertConfig
+	pretrained_model_archive_map = BERT_PRETRAINED_MODEL_ARCHIVE_MAP
+	base_model_prefix = "bert"
 
 	def __init__(self, config):
 		super().__init__(config)
-		self.disitllbert = DistillBertModel(config)
+		self.bert = BertModel(config)
 		self.init_weights()
 	
 	def get_input_embeddings(self):
-		return self.distilbert.embeddings.word_embeddings
+		return self.bert.embeddings.word_embeddings
 
 	def set_input_embeddings(self, value):
-		self.disitllbert.embeddings.word_embeddings = value
+		self.bert.embeddings.word_embeddings = value
 
 class BiEncoderAttentionWithRationaleClassification(nn.Module):
 
@@ -138,17 +148,17 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 		self.norm = Norm(hidden_size)
 		self.rationale_num_labels = rationale_num_labels
 		self.empathy_num_labels = empathy_num_labels
-		self.empathy_classifier = BartClassificationHead(hidden_size = 768)
+		self.empathy_classifier = BertClassificationHead(hidden_size = 768)
 
 		self.apply(self._init_weights)
 
 		self.seeker_encoder = SeekerEncoder.from_pretrained(
-								"distilbert-base-uncased", # Use the 12-layer BERT model, with an uncased vocab.
+								"bert-base-uncased", # Use the 12-layer BERT model, with an uncased vocab.
 								output_attentions = False, # Whether the model returns attentions weights.
 								output_hidden_states = False)
 
 		self.responder_encoder = ResponderEncoder.from_pretrained(
-								"distilbert-base-uncased", # Use the 12-layer BERT model, with an uncased vocab.
+								"bert-base-uncased", # Use the 12-layer BERT model, with an uncased vocab.
 								output_attentions = False, # Whether the model returns attentions weights.
 								output_hidden_states = False)
 
@@ -187,7 +197,7 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 		lambda_EI=1,
 		lambda_RE=0.1
 	):
-		outputs_SP = self.seeker_encoder.roberta(
+		outputs_SP = self.seeker_encoder.bert(
 			input_ids_SP,
 			attention_mask=attention_mask_SP,
 			token_type_ids=token_type_ids_SP,
@@ -197,7 +207,7 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 		)
 
 
-		outputs_RP = self.responder_encoder.roberta(
+		outputs_RP = self.responder_encoder.bert(
 			input_ids_RP,
 			attention_mask=attention_mask_RP,
 			token_type_ids=token_type_ids_RP,
@@ -245,7 +255,7 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 
 
 
-class DistillBertClassificationHead(nn.Module):
+class BertClassificationHead(nn.Module):
 	"""Head for sentence-level classification tasks."""
 
 	def __init__(self, hidden_dropout_prob=0.1, hidden_size=768, empathy_num_labels=3):

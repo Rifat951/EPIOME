@@ -1,29 +1,56 @@
-from .disitllbert import DistillBertForTokenClassification, DisitllBertModel
+# coding=utf-8
+# Copyright 2018 The OpenAI Team Authors and HuggingFace Inc. team.
+# Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""PyTorch OpenAI GPT-2 model."""
+
+import sys
+sys.path.append("..")
+
+#from __future__ import absolute_import, division, print_function, unicode_literals
+
+import collections
+import json
+import logging
+import math
+import os
+import sys
+from io import open
+
 import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss, MSELoss
-import math
+
 import torch.nn.functional as F
 
-from .model_db import DistillBertEmbeddings, DistillBertLayerNorm, DistillBertModel, DistillBertPreTrainedModel, gelu
-from .configuration_db import DistilBertConfig
+from .modeling_bert import BertLayerNorm as LayerNorm
+
+from .gpt2 import LayerNorm, GPT2Model, GPT2PreTrainedModel, gelu
+from .configuration_gpt2 import Gpt2Config
 from .file_utils import add_start_docstrings, add_start_docstrings_to_callable
 
-#from transformers import GPT2Model
+
 from transformers import AutoModelWithLMHead, AutoTokenizer
 
 
-DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "distilbert-base-uncased",
-    "distilbert-base-uncased-distilled-squad",
-    "distilbert-base-cased",
-    "distilbert-base-cased-distilled-squad",
-    "distilbert-base-german-cased",
-    "distilbert-base-multilingual-cased",
-    "distilbert-base-uncased-finetuned-sst-2-english",
-    # See all DistilBERT models at https://huggingface.co/models?filter=distilbert
-]
 
+logger = logging.getLogger(__name__)
+
+GPT2_PRETRAINED_MODEL_ARCHIVE_MAP = {"gpt2": "https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-pytorch_model.bin",
+                                     "gpt2-medium": "https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-medium-pytorch_model.bin"}
+GPT2_PRETRAINED_CONFIG_ARCHIVE_MAP = {"gpt2": "https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-config.json",
+                                      "gpt2-medium": "https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-medium-config.json"}
 
 class Norm(nn.Module):
 	def __init__(self, d_model, eps = 1e-6):
@@ -93,39 +120,39 @@ class MultiHeadAttention(nn.Module):
 		return output
 
 
-class SeekerEncoder(DistillBertPreTrainedModel):
-	config_class = DisitllBertModel
-	pretrained_model_archive_map = DISTILLBERT_PRETRAINED_MODEL_ARCHIVE_MAP
-	base_model_prefix = "distillbert"
+class SeekerEncoder(Gpt2PreTrainedModel):
+	config_class = GPT2Config
+	pretrained_model_archive_map = GPT2_PRETRAINED_MODEL_ARCHIVE_MAP
+	base_model_prefix = "bert"
 
 	def __init__(self, config):
 		super().__init__(config)
 		self.num_labels = config.num_labels
-		self.roberta = RobertaModel(config)
+		self.gpt2 = Gpt2Model(config)
 		self.init_weights()
 	
 	def get_input_embeddings(self):
-		return self.roberta.embeddings.word_embeddings
+		return self.gpt2.embeddings.word_embeddings
 
 	def set_input_embeddings(self, value):
-		self.roberta.embeddings.word_embeddings = value
+		self.gpt2.embeddings.word_embeddings = value
 	
 
-class ResponderEncoder(DistillBertPretrainedModel):
-	config_class = DisitllBertModel
-	pretrained_model_archive_map = DISTILLBERT_PRETRAINED_MODEL_ARCHIVE_MAP
-	base_model_prefix = "distillbert"
+class ResponderEncoder(Gpt2PreTrainedModel):
+	config_class = Gpt2Config
+	pretrained_model_archive_map = GPT2_PRETRAINED_MODEL_ARCHIVE_MAP
+	base_model_prefix = "gpt2"
 
 	def __init__(self, config):
 		super().__init__(config)
-		self.disitllbert = DistillBertModel(config)
+		self.gpt2 = Gpt2Model(config)
 		self.init_weights()
 	
 	def get_input_embeddings(self):
-		return self.distilbert.embeddings.word_embeddings
+		return self.gpt2.embeddings.word_embeddings
 
 	def set_input_embeddings(self, value):
-		self.disitllbert.embeddings.word_embeddings = value
+		self.gpt2.embeddings.word_embeddings = value
 
 class BiEncoderAttentionWithRationaleClassification(nn.Module):
 
@@ -138,17 +165,17 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 		self.norm = Norm(hidden_size)
 		self.rationale_num_labels = rationale_num_labels
 		self.empathy_num_labels = empathy_num_labels
-		self.empathy_classifier = BartClassificationHead(hidden_size = 768)
+		self.empathy_classifier = BertClassificationHead(hidden_size = 768)
 
 		self.apply(self._init_weights)
 
 		self.seeker_encoder = SeekerEncoder.from_pretrained(
-								"distilbert-base-uncased", # Use the 12-layer BERT model, with an uncased vocab.
+								"gpt2", # Use the 12-layer BERT model, with an uncased vocab.
 								output_attentions = False, # Whether the model returns attentions weights.
 								output_hidden_states = False)
 
 		self.responder_encoder = ResponderEncoder.from_pretrained(
-								"distilbert-base-uncased", # Use the 12-layer BERT model, with an uncased vocab.
+								"gpt2", # Use the 12-layer BERT model, with an uncased vocab.
 								output_attentions = False, # Whether the model returns attentions weights.
 								output_hidden_states = False)
 
@@ -187,7 +214,7 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 		lambda_EI=1,
 		lambda_RE=0.1
 	):
-		outputs_SP = self.seeker_encoder.roberta(
+		outputs_SP = self.seeker_encoder.bert(
 			input_ids_SP,
 			attention_mask=attention_mask_SP,
 			token_type_ids=token_type_ids_SP,
@@ -197,7 +224,7 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 		)
 
 
-		outputs_RP = self.responder_encoder.roberta(
+		outputs_RP = self.responder_encoder.bert(
 			input_ids_RP,
 			attention_mask=attention_mask_RP,
 			token_type_ids=token_type_ids_RP,
@@ -245,7 +272,7 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 
 
 
-class DistillBertClassificationHead(nn.Module):
+class GPT2ClassificationHead(nn.Module):
 	"""Head for sentence-level classification tasks."""
 
 	def __init__(self, hidden_dropout_prob=0.1, hidden_size=768, empathy_num_labels=3):

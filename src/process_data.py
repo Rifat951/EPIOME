@@ -5,9 +5,17 @@ import re
 import numpy as np
 import argparse
 
-from transformers import RobertaTokenizer
+#from transformers import RobertaTokenizer
 
-tokenizer = RobertaTokenizer.from_pretrained('roberta-base', do_lower_case=True)
+#from transformers import BertTokenizer
+
+from transformers import DistilBertModel, DistilBertConfig
+#from transformers import DistilBertTokenizer, DistilBertForMaskedLM
+from transformers import DistilBertTokenizer
+from transformers import AutoTokenizer
+
+
+tokenizer = DistillBertTokenizer.from_pretrained('distillbert-base-uncased', do_lower_case=True)
 
 parser = argparse.ArgumentParser("process_data")
 parser.add_argument("--input_path", type=str, help="path to input data")

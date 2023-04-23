@@ -13,17 +13,12 @@ import time
 
 from sklearn.metrics import f1_score
 
-# from transformers import RobertaTokenizer
-# from transformers import BertTokenizer
-# from transformers import BartTokenizer
-from transformers import DistillBertTokenizer
-
+from transformers import RobertaTokenizer
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data import TensorDataset, random_split
 
 from models.models import BiEncoderAttentionWithRationaleClassification
-#from transformers import AdamW, RobertaConfig, BertConfig
-
+from transformers import AdamW, RobertaConfig
 
 import datetime
 
@@ -37,10 +32,7 @@ class EmpathyClassifier():
 				 EX_model_path='output/sample_EX.pth',
 				 batch_size=1):
 
-		#self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-		#self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2', do_lower_case=True)
-		self.tokenizer = DistillBertTokenizer.from_pretrained('distilbert-base-uncased', do_lower_case=True)
-		#self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
+		self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base', do_lower_case=True)
 		self.batch_size = batch_size
 		self.device = device
 

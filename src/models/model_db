@@ -1,28 +1,44 @@
-from .disitllbert import DistillBertForTokenClassification, DisitllBertModel
+#from .roberta import RobertaForTokenClassification, RobertaModel
+#from .bart import BartForTokenClassification, BartModel
+
+from .db import DistilBertForTokenClassification, DistilBertModel
+
+
+
 import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss, MSELoss
 import math
 import torch.nn.functional as F
 
-from .model_db import DistillBertEmbeddings, DistillBertLayerNorm, DistillBertModel, DistillBertPreTrainedModel, gelu
+from .modeling_bert import BertEmbeddings, BertLayerNorm, BertModel, BertPreTrainedModel, gelu
+#from .configuration_roberta import RobertaConfig
+#from .configuration_bart import BartConfig
 from .configuration_db import DistilBertConfig
+
 from .file_utils import add_start_docstrings, add_start_docstrings_to_callable
 
-#from transformers import GPT2Model
+from transformers import GPT2Model
 from transformers import AutoModelWithLMHead, AutoTokenizer
 
 
-DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "distilbert-base-uncased",
-    "distilbert-base-uncased-distilled-squad",
-    "distilbert-base-cased",
-    "distilbert-base-cased-distilled-squad",
-    "distilbert-base-german-cased",
-    "distilbert-base-multilingual-cased",
-    "distilbert-base-uncased-finetuned-sst-2-english",
-    # See all DistilBERT models at https://huggingface.co/models?filter=distilbert
-]
+DISTILBERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
+    "distilbert-base-uncased": "https://huggingface.co/distilbert-base-uncased/resolve/main/config.json",
+    "distilbert-base-uncased-distilled-squad": (
+        "https://huggingface.co/distilbert-base-uncased-distilled-squad/resolve/main/config.json"
+    ),
+    "distilbert-base-cased": "https://huggingface.co/distilbert-base-cased/resolve/main/config.json",
+    "distilbert-base-cased-distilled-squad": (
+        "https://huggingface.co/distilbert-base-cased-distilled-squad/resolve/main/config.json"
+    ),
+    "distilbert-base-german-cased": "https://huggingface.co/distilbert-base-german-cased/resolve/main/config.json",
+    "distilbert-base-multilingual-cased": (
+        "https://huggingface.co/distilbert-base-multilingual-cased/resolve/main/config.json"
+    ),
+    "distilbert-base-uncased-finetuned-sst-2-english": (
+        "https://huggingface.co/distilbert-base-uncased-finetuned-sst-2-english/resolve/main/config.json"
+    ),
+}
 
 
 class Norm(nn.Module):
@@ -93,39 +109,39 @@ class MultiHeadAttention(nn.Module):
 		return output
 
 
-class SeekerEncoder(DistillBertPreTrainedModel):
-	config_class = DisitllBertModel
-	pretrained_model_archive_map = DISTILLBERT_PRETRAINED_MODEL_ARCHIVE_MAP
-	base_model_prefix = "distillbert"
+class SeekerEncoder(BertPreTrainedModel):
+	config_class = DistilBertConfig
+	pretrained_model_archive_map = DISTILBERT_PRETRAINED_MODEL_ARCHIVE_MAP
+	base_model_prefix = "distilbert"
 
 	def __init__(self, config):
 		super().__init__(config)
 		self.num_labels = config.num_labels
-		self.roberta = RobertaModel(config)
-		self.init_weights()
-	
-	def get_input_embeddings(self):
-		return self.roberta.embeddings.word_embeddings
-
-	def set_input_embeddings(self, value):
-		self.roberta.embeddings.word_embeddings = value
-	
-
-class ResponderEncoder(DistillBertPretrainedModel):
-	config_class = DisitllBertModel
-	pretrained_model_archive_map = DISTILLBERT_PRETRAINED_MODEL_ARCHIVE_MAP
-	base_model_prefix = "distillbert"
-
-	def __init__(self, config):
-		super().__init__(config)
-		self.disitllbert = DistillBertModel(config)
+		self.distilbert = DistilBertModel(config)
 		self.init_weights()
 	
 	def get_input_embeddings(self):
 		return self.distilbert.embeddings.word_embeddings
 
 	def set_input_embeddings(self, value):
-		self.disitllbert.embeddings.word_embeddings = value
+		self.distilbert.embeddings.word_embeddings = value
+	
+
+class ResponderEncoder(BertPreTrainedModel):
+	config_class = DistilBertConfig
+	pretrained_model_archive_map = DISTILBERT_PRETRAINED_MODEL_ARCHIVE_MAP
+	base_model_prefix = "distilbert"
+
+	def __init__(self, config):
+		super().__init__(config)
+		self.distilbert = DistilBertModel(config)
+		self.init_weights()
+	
+	def get_input_embeddings(self):
+		return self.distilbert.embeddings.word_embeddings
+
+	def set_input_embeddings(self, value):
+		self.distilbert.embeddings.word_embeddings = value
 
 class BiEncoderAttentionWithRationaleClassification(nn.Module):
 
@@ -138,7 +154,8 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 		self.norm = Norm(hidden_size)
 		self.rationale_num_labels = rationale_num_labels
 		self.empathy_num_labels = empathy_num_labels
-		self.empathy_classifier = BartClassificationHead(hidden_size = 768)
+		#### change
+		self.empathy_classifier = DistillBertClassificationHead(hidden_size = 768)
 
 		self.apply(self._init_weights)
 
@@ -245,7 +262,7 @@ class BiEncoderAttentionWithRationaleClassification(nn.Module):
 
 
 
-class DistillBertClassificationHead(nn.Module):
+class DistilBertClassificationHead(nn.Module):
 	"""Head for sentence-level classification tasks."""
 
 	def __init__(self, hidden_dropout_prob=0.1, hidden_size=768, empathy_num_labels=3):

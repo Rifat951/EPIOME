@@ -15,7 +15,7 @@ do
   else
     echo "Processing ${array[$i]} File"
     python3 src/train.py \
-      --train_path="dataset/sample_input_model_IP.csv" \
+      --train_path="dataset/sample_input_model_IP_1.csv" \
       --lr=2e-5 \
       --batch_size=32 \
       --lambda_EI=1.0 \
